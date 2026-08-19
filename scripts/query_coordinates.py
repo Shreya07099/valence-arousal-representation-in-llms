@@ -1,13 +1,4 @@
-"""
-Query Qwen for model-native valence-arousal coordinates for GoEmotions labels.
 
-Colab quick start:
-    !pip install -q "transformers>=4.51" accelerate torch
-    !python scripts/query_coordinates.py
-
-Optional:
-    !python scripts/query_coordinates.py --output /content/drive/MyDrive/qwen_native_coordinates.json
-"""
 
 from __future__ import annotations
 
@@ -29,10 +20,10 @@ from config import ALL_LABELS
 DEFAULT_MODEL = "Qwen/Qwen3-1.7B"
 DEFAULT_OUTPUT = "outputs/qwen_native_coordinates.json"
 
-# 28 GoEmotions labels used in this project (27 emotions + neutral).
+
 EMOTIONS = ALL_LABELS
 
-# Appendix A.1 templates from Sun et al. (2026)
+
 TEMPLATES = {
     "template_1": (
         'Rate the emotion label "{label}" on two continuous scales.\n'
@@ -117,7 +108,7 @@ def build_chat_text(tokenizer, prompt: str) -> str:
         "tokenize": False,
         "add_generation_prompt": True,
     }
-    # Qwen3 supports a thinking mode; disable it for short JSON answers.
+    # Qwen3 supports a thinking mode, disavle that
     if "enable_thinking" in tokenizer.chat_template or "qwen3" in tokenizer.name_or_path.lower():
         kwargs["enable_thinking"] = False
 
