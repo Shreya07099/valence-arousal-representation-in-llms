@@ -4,6 +4,10 @@ This repository studies how large language models internally represent **valence
 
 The prompting setup follows the three templates in Appendix A.1 of Sun et al. (2026). Coordinates are averaged across templates and clamped to `[-1, +1]`.
 
+**GPU work is done in Google Colab.** Loading Qwen and scoring valence/arousal is not practical on a local CPU. Use the notebook in [`notebooks/gpu_emotion_extraction_and_valence.ipynb`](notebooks/gpu_emotion_extraction_and_valence.ipynb) (or the [live Colab copy](https://colab.research.google.com/drive/1TEOHKThV3pn3VaTYYUxC3al-CW18DEkf)).
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1TEOHKThV3pn3VaTYYUxC3al-CW18DEkf)
+
 ## Repository layout
 
 ```
@@ -17,6 +21,8 @@ The prompting setup follows the three templates in Appendix A.1 of Sun et al. (2
 │   ├── pull_go_emotions.py   # write the JSONL dataset
 │   ├── count_emotion_labels.py
 │   └── query_coordinates.py  # query Qwen for VA coordinates
+├── notebooks/
+│   └── gpu_emotion_extraction_and_valence.ipynb
 ├── outputs/                  # generated coordinate JSON (not committed)
 └── steering/                 # reserved for later steering experiments
 ```
@@ -35,7 +41,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-GPU is optional for dataset extraction. Querying Qwen needs a GPU (Colab T4 is enough for `Qwen/Qwen3-1.7B`).
+Local CPU is enough for dataset scripts that only read or write JSONL. **Emotion extraction with Hugging Face `datasets` plus Qwen valence ratings need a GPU.** Those steps live in the Colab notebook so they do not have to run on a laptop CPU.
 
 ## 1. Build the single-label dataset
 
@@ -61,21 +67,25 @@ Count examples per label:
 python scripts/count_emotion_labels.py
 ```
 
-## 2. Query model-native coordinates
+## 2. GPU notebook: emotion extraction and valence ratings
 
-This step loads Qwen, asks for valence and arousal of each of the 28 labels using three prompt templates, then writes averaged coordinates.
+Run this on **Google Colab with a GPU** (Runtime → Change runtime type → GPU). A local CPU will be too slow or run out of memory for Qwen.
 
-**Local GPU**
+Notebook in this repo: [`notebooks/gpu_emotion_extraction_and_valence.ipynb`](notebooks/gpu_emotion_extraction_and_valence.ipynb)
+
+Live Colab: [https://colab.research.google.com/drive/1TEOHKThV3pn3VaTYYUxC3al-CW18DEkf](https://colab.research.google.com/drive/1TEOHKThV3pn3VaTYYUxC3al-CW18DEkf)
+
+The notebook:
+
+1. Checks that CUDA is available
+2. Extracts single-label GoEmotions examples into one JSONL file
+3. Queries `Qwen/Qwen3-1.7B` for valence and arousal of all 28 labels
+4. Saves `outputs/qwen_native_coordinates.json` (and optionally copies it to Google Drive)
+
+If you already have a local GPU, the same commands work outside Colab:
 
 ```bash
 python scripts/query_coordinates.py
-```
-
-**Google Colab** (GPU runtime):
-
-```python
-!pip install -q "transformers>=4.51" accelerate torch
-!python scripts/query_coordinates.py --output /content/drive/MyDrive/qwen_native_coordinates.json
 ```
 
 Useful flags:
@@ -110,7 +120,7 @@ Implemented:
 
 - single-label GoEmotions extraction
 - per-label counts
-- Qwen valence–arousal querying
+- Qwen valence–arousal querying (GPU / Colab notebook)
 
 Planned:
 
