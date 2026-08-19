@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+**/.venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Notebooks / caches
+.ipynb_checkpoints/
+huggingface_cache/
+.cache/
+
+# Generated model outputs (regenerate with scripts/query_coordinates.py)
+outputs/*.json
+!outputs/.gitkeep
