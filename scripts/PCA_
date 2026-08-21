@@ -1,0 +1,157 @@
+"""Extract a low-rank PCA basis from mean-centered emotion vectors.
+
+For each layer, given the centered [27, 2048] matrix V_centered:
+
+    U, S, Vt = svd(V_centered)          # full SVD
+    components = Vt[:k]                  # [k, 2048]  -- PC directions
+    scores     = V_centered @ components.T   # [27, k] -- PC coordinates
+
+PC1 (components[0]) typically aligns with valence; later PCs often
+correlate with arousal and other structure. Applied independently at
+every layer, same as centering.
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+import torch
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+DEFAULT_INPUT = ROOT / "data" / "emotion_centered_vectors.pt"
+DEFAULT_OUTPUT = ROOT / "data" / "emotion_pca_vectors.pt"
+DEFAULT_K = 10
+DEFAULT_CHECK_LAYER = 14
+
+
+def pca_layer(V_centered: torch.Tensor, k: int):
+    """SVD-based PCA on an already mean-centered [n, d] matrix.
+
+    Returns:
+        components: [k, d]  -- top-k right singular vectors (PC directions)
+        scores: [n, k]      -- V_centered projected onto components
+        explained_variance_ratio: [k]
+        singular_values: [k]
+    """
+    # full_matrices=False keeps this cheap: U is [n, n], S is [n], Vt is [n, d]
+    U, S, Vt = torch.linalg.svd(V_centered, full_matrices=False)
+
+    n = V_centered.shape[0]
+    max_rank = min(n - 1, V_centered.shape[1])  # centering removes 1 dof
+    if k > max_rank:
+        raise ValueError(
+            f"k={k} exceeds max usable rank {max_rank} for a "
+            f"{n}x{V_centered.shape[1]} centered matrix (rank <= n-1)."
+        )
+
+    components = Vt[:k]                          # [k, d]
+    scores = V_centered @ components.T            # [n, k]
+
+    total_var = (S ** 2).sum()
+    explained_variance_ratio = (S[:k] ** 2) / total_var
+
+    return components, scores, explained_variance_ratio, S[:k]
+
+
+def pca_all_layers(V_centered_per_layer: list[torch.Tensor], k: int):
+    components_per_layer = []
+    scores_per_layer = []
+    evr_per_layer = []
+    singular_values_per_layer = []
+
+    for V_centered in V_centered_per_layer:
+        components, scores, evr, sv = pca_layer(V_centered, k)
+        components_per_layer.append(components)
+        scores_per_layer.append(scores)
+        evr_per_layer.append(evr)
+        singular_values_per_layer.append(sv)
+
+    return components_per_layer, scores_per_layer, evr_per_layer, singular_values_per_layer
+
+
+def scores_to_dict(scores: torch.Tensor, emotions: list[str]) -> dict[str, torch.Tensor]:
+    """[27, k] -> {emotion: [k]} for readable lookup, mirrors centered_per_layer."""
+    return {emotion: scores[i] for i, emotion in enumerate(emotions)}
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Extract top-k PCA components from mean-centered emotion vectors."
+    )
+    parser.add_argument("--input", type=Path, default=DEFAULT_INPUT,
+                         help=f"Path to emotion_centered_vectors.pt (default: {DEFAULT_INPUT}).")
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT,
+                         help=f"Output .pt path (default: {DEFAULT_OUTPUT}).")
+    parser.add_argument("--k", type=int, default=DEFAULT_K,
+                         help=f"Number of principal components to keep (default: {DEFAULT_K}).")
+    parser.add_argument("--check-layer", type=int, default=DEFAULT_CHECK_LAYER,
+                         help=f"Layer index to print a sanity check for (default: {DEFAULT_CHECK_LAYER}).")
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    payload = torch.load(args.input, map_location="cpu", weights_only=False)
+
+    required = ("V_centered_per_layer", "emotions", "mu_per_layer")
+    missing = [k for k in required if k not in payload]
+    if missing:
+        raise ValueError(f"{args.input} is missing keys: {missing}")
+
+    emotions = payload["emotions"]
+    V_centered_per_layer = payload["V_centered_per_layer"]
+    n_layers = len(V_centered_per_layer)
+
+    if not (0 <= args.check_layer < n_layers):
+        raise ValueError(f"--check-layer {args.check_layer} out of range for {n_layers} layers.")
+
+    components_per_layer, scores_per_layer, evr_per_layer, sv_per_layer = pca_all_layers(
+        V_centered_per_layer, args.k
+    )
+    scores_dict_per_layer = [
+        scores_to_dict(scores_per_layer[layer], emotions) for layer in range(n_layers)
+    ]
+
+    layer = args.check_layer
+    evr = evr_per_layer[layer]
+    print(f"Loaded {args.input}")
+    print(f"k = {args.k}")
+    print(f"components[{layer}].shape = {tuple(components_per_layer[layer].shape)}")   # [k, 2048]
+    print(f"scores[{layer}].shape     = {tuple(scores_per_layer[layer].shape)}")       # [27, k]
+    print(f"layer {layer} explained variance ratio (per PC):")
+    for i, v in enumerate(evr.tolist()):
+        print(f"  PC{i+1}: {v:.3%}")
+    print(f"  cumulative (top {args.k}): {evr.sum().item():.3%}")
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "k": args.k,
+            "emotions": emotions,
+            "mu_per_layer": payload["mu_per_layer"],           # carried forward for un-projecting
+            "components_per_layer": components_per_layer,       # list[29] of [k, 2048]
+            "scores_per_layer": scores_per_layer,                # list[29] of [27, k]
+            "scores_dict_per_layer": scores_dict_per_layer,      # list[29] of {emotion: [k]}
+            "explained_variance_ratio_per_layer": evr_per_layer, # list[29] of [k]
+            "singular_values_per_layer": sv_per_layer,           # list[29] of [k]
+            "model": payload.get("model"),
+            "source": str(args.input),
+            "formula": "components, scores = top-k SVD(V_centered); scores = V_centered @ components.T",
+        },
+        args.output,
+    )
+    print(f"Saved PCA basis to {args.output}")
+    print(
+        "Access example: payload['scores_dict_per_layer'][layer][emotion]  "
+        "or payload['scores_per_layer'][layer]  # [27, k]  "
+        "or payload['components_per_layer'][layer]  # [k, 2048]"
+    )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,114 @@
+{
+    "admiration": {
+        "valence": 0.2167,
+        "arousal": 0.3667
+    },
+    "amusement": {
+        "valence": 0.2167,
+        "arousal": 0.7833
+    },
+    "anger": {
+        "valence": -0.2833,
+        "arousal": 0.8667
+    },
+    "annoyance": {
+        "valence": -0.3833,
+        "arousal": -0.65
+    },
+    "approval": {
+        "valence": 0.0,
+        "arousal": 0.6833
+    },
+    "caring": {
+        "valence": 0.05,
+        "arousal": 0.7
+    },
+    "confusion": {
+        "valence": -0.1667,
+        "arousal": 0.0
+    },
+    "curiosity": {
+        "valence": 0.05,
+        "arousal": 0.7
+    },
+    "desire": {
+        "valence": 0.05,
+        "arousal": 0.7
+    },
+    "disappointment": {
+        "valence": -0.2167,
+        "arousal": -0.1167
+    },
+    "disapproval": {
+        "valence": -0.5,
+        "arousal": -0.4333
+    },
+    "disgust": {
+        "valence": -0.5,
+        "arousal": -0.4333
+    },
+    "embarrassment": {
+        "valence": -0.3333,
+        "arousal": -0.1
+    },
+    "excitement": {
+        "valence": 0.25,
+        "arousal": 0.7
+    },
+    "fear": {
+        "valence": -0.3833,
+        "arousal": -0.4833
+    },
+    "gratitude": {
+        "valence": 0.2167,
+        "arousal": 0.6167
+    },
+    "grief": {
+        "valence": -0.75,
+        "arousal": -0.6
+    },
+    "joy": {
+        "valence": 0.55,
+        "arousal": 0.7833
+    },
+    "love": {
+        "valence": 0.4167,
+        "arousal": 0.45
+    },
+    "nervousness": {
+        "valence": -0.05,
+        "arousal": 0.6667
+    },
+    "neutral": {
+        "valence": 0.0,
+        "arousal": 0.0
+    },
+    "optimism": {
+        "valence": 0.25,
+        "arousal": 0.4167
+    },
+    "pride": {
+        "valence": 0.2167,
+        "arousal": 0.7833
+    },
+    "realization": {
+        "valence": 0.0,
+        "arousal": 0.35
+    },
+    "relief": {
+        "valence": 0.1667,
+        "arousal": 0.35
+    },
+    "remorse": {
+        "valence": -0.1667,
+        "arousal": 0.1
+    },
+    "sadness": {
+        "valence": -0.8,
+        "arousal": -0.5667
+    },
+    "surprise": {
+        "valence": 0.0,
+        "arousal": 0.5
+    }
+}
